@@ -25,6 +25,11 @@
                 <a data-toggle="tab" href="#customer_stats_info"><?= lang('Customers.stats_info') ?></a>
             </li>
         <?php } ?>
+        <?php if ($person_info->person_id != -1) { ?>
+            <li role="presentation">
+                <a data-toggle="tab" href="#customer_appointments_info">Turnos</a>
+            </li>
+        <?php } ?>
         <?php if (!empty($mailchimp_info) && !empty($mailchimp_activity)) { ?>
             <li role="presentation">
                 <a data-toggle="tab" href="#customer_mailchimp_info"><?= lang('Customers.mailchimp_info') ?></a>
@@ -327,6 +332,27 @@
             </div>
         <?php } ?>
 
+        <div class="tab-pane" id="customer_appointments_info">
+            <fieldset>
+                <div id="appointments_table_wrapper">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Servicio</th>
+                                <th>Estado</th>
+                                <th>Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointments_contents">
+                            <!-- Loaded via AJAX -->
+                            <tr><td colspan="4">Cargando turnos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </fieldset>
+        </div>
+
         <?php if (!empty($mailchimp_info) && !empty($mailchimp_activity)) { ?>
             <div class="tab-pane" id="customer_mailchimp_info">
                 <fieldset>
@@ -468,6 +494,42 @@
             select: fill_value,
             focus: fill_value
         });
+
+        // Load appointments for this customer
+        var customer_id = "<?= $person_info->person_id ?>";
+        if (customer_id != "-1") {
+            var translateStatus = function(status) {
+                var statuses = {
+                    'pending': 'Pendiente',
+                    'confirmed': 'Confirmado',
+                    'completed': 'Completado',
+                    'cancelled': 'Cancelado'
+                };
+                return statuses[status] || status;
+            };
+
+            $.get("<?= site_url('appointments/customer_appointments/') ?>" + customer_id, function(data) {
+                var html = '';
+                if (data.length > 0) {
+                    $.each(data, function(i, appt) {
+                        var statusClass = 'info';
+                        if (appt.status == 'completed') statusClass = 'success';
+                        if (appt.status == 'cancelled') statusClass = 'danger';
+                        if (appt.status == 'confirmed') statusClass = 'primary';
+
+                        html += '<tr>';
+                        html += '<td>' + appt.start_time + '</td>';
+                        html += '<td>' + appt.service_name + '</td>';
+                        html += '<td><span class="label label-' + statusClass + '">' + translateStatus(appt.status) + '</span></td>';
+                        html += '<td>' + (appt.sale_id ? 'POS ' + appt.sale_id : '-') + '</td>';
+                        html += '</tr>';
+                    });
+                } else {
+                    html = '<tr><td colspan="4" class="text-center">No hay turnos registrados para este cliente.</td></tr>';
+                }
+                $('#appointments_contents').html(html);
+            }, 'json');
+        }
 
         $('#customer_form').validate($.extend({
             submitHandler: function(form) {

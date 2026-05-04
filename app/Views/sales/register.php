@@ -61,6 +61,16 @@ if (isset($success)) {
 
 <div id="register_wrapper">
 
+    <!-- Appointment Info -->
+    <?php if (session()->get('appointment_id')): ?>
+        <div class="alert alert-info">
+            <strong>Turno detectado:</strong> 
+            <?= session()->get('appointment_service_name') ?> (<?= to_currency(session()->get('appointment_service_price')) ?>)
+            <br>
+            <small>El cliente y el servicio han sido cargados automáticamente en la venta.</small>
+        </div>
+    <?php endif; ?>
+
     <!-- Top register controls -->
     <?= form_open("$controller_name/changeMode", ['id' => 'mode_form', 'class' => 'form-horizontal panel panel-default']) ?>
         <div class="panel-body form-group">
@@ -247,7 +257,7 @@ if (isset($success)) {
                                 <td colspan="2" style="text-align: left;">
                                     <?php
                                     if ($item['allow_alt_description']) {
-                                        echo form_input(['name' => 'description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'onClick' => 'this.select();']);
+                                        echo form_input(['name' => 'description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'placeholder' => lang(ucfirst($controller_name) . '.description_abbrv'), 'onClick' => 'this.select();']);
                                     } else {
                                         if ($item['description'] != '') {
                                             echo $item['description'];

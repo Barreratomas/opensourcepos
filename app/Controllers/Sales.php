@@ -71,6 +71,72 @@ class Sales extends Secure_Controller
     public function getIndex(): void
     {
         $this->session->set('allow_temp_items', 1);
+
+        // Handle appointment integration
+        $customer_id = $this->request->getGet('customer_id');
+        $service_id = $this->request->getGet('service_id');
+        $appointment_id = $this->request->getGet('appointment_id');
+
+        // Only process if appointment_id is present in the URL (first redirect from Agenda)
+        if ($appointment_id && $this->session->get('appointment_id') != $appointment_id) {
+            $this->session->set('appointment_id', $appointment_id);
+            
+            if ($customer_id) {
+                $this->sale_lib->set_customer($customer_id);
+            }
+
+            if ($service_id) {
+                $serviceModel = model(\App\Models\AppointmentServiceModel::class);
+                $service = $serviceModel->find($service_id);
+                if ($service) {
+                    $this->session->set('appointment_service_id', $service_id);
+                    $this->session->set('appointment_service_price', $service['price']);
+                    $this->session->set('appointment_service_name', $service['name']);
+
+                    // Try to find an existing item with the same name or create a temporary one
+                    $itemModel = model(\App\Models\Item::class);
+                    $item = $itemModel->where('name', $service['name'])->where('deleted', 0)->first();
+                    
+                    $item_id = null;
+                    if ($item) {
+                        $item_id = $item['item_id'];
+                    } else {
+                        // Create a temporary item for this sale
+                        $item_data = [
+                            'name'        => $service['name'],
+                            'category'    => 'Servicios',
+                            'description' => 'Servicio desde Agenda',
+                            'unit_price'  => $service['price'],
+                            'cost_price'  => 0,
+                            'stock_type'  => HAS_NO_STOCK,
+                            'item_type'   => ITEM_TEMP,
+                            'deleted'     => 0
+                        ];
+                        $itemModel->save_value($item_data);
+                        $item_id = $item_data['item_id'];
+                    }
+
+                    if ($item_id) {
+                        $item_location = $this->sale_lib->get_sale_location();
+                        $discount = $this->config['default_sales_discount'];
+                        $discount_type = $this->config['default_sales_discount_type'];
+                        
+                        // Check customer discount
+                        if ($customer_id) {
+                            $customer_info = model(\App\Models\Customer::class)->get_info($customer_id);
+                            if ($customer_info->discount != '') {
+                                $discount = $customer_info->discount;
+                                $discount_type = $customer_info->discount_type;
+                            }
+                        }
+
+                        $item_id_str = (string)$item_id;
+                        $this->sale_lib->add_item($item_id_str, $item_location, 1, $discount, $discount_type, PRICE_MODE_STANDARD, null, null, $service['price']);
+                    }
+                }
+            }
+        }
+
         $this->_reload();    // TODO: Hungarian Notation
     }
 
@@ -188,6 +254,10 @@ class Sales extends Secure_Controller
         }
         $suggestions = array_merge($suggestions, $this->item->get_search_suggestions($search, ['search_custom' => false, 'is_deleted' => false], true));
         $suggestions = array_merge($suggestions, $this->item_kit->get_search_suggestions($search));
+
+        // Add appointment services suggestions
+        $serviceModel = model(\App\Models\AppointmentServiceModel::class);
+        $suggestions = array_merge($suggestions, $serviceModel->getSearchSuggestions($search));
 
         echo json_encode($suggestions);
     }
@@ -504,6 +574,43 @@ class Sales extends Secure_Controller
 
         if ($mode == 'return' && $this->sale->is_valid_receipt($item_id_or_number_or_item_kit_or_receipt)) {
             $this->sale_lib->return_entire_sale($item_id_or_number_or_item_kit_or_receipt);
+        } elseif (str_starts_with($item_id_or_number_or_item_kit_or_receipt, 'SERV ')) {
+            // Handle appointment service manual addition
+            $service_id = str_replace('SERV ', '', $item_id_or_number_or_item_kit_or_receipt);
+            $serviceModel = model(\App\Models\AppointmentServiceModel::class);
+            $service = $serviceModel->find($service_id);
+            
+            if ($service) {
+                $itemModel = model(\App\Models\Item::class);
+                $item = $itemModel->where('name', $service['name'])->where('deleted', 0)->first();
+                
+                $item_id = null;
+                if ($item) {
+                    $item_id = $item['item_id'];
+                } else {
+                    $item_data = [
+                        'name'        => $service['name'],
+                        'category'    => 'Servicios',
+                        'description' => 'Servicio desde Agenda',
+                        'unit_price'  => $service['price'],
+                        'cost_price'  => 0,
+                        'stock_type'  => HAS_NO_STOCK,
+                        'item_type'   => ITEM_TEMP,
+                        'deleted'     => 0
+                    ];
+                    $itemModel->save_value($item_data);
+                    $item_id = $item_data['item_id'];
+                }
+
+                if ($item_id) {
+                    $item_id_str = (string)$item_id;
+                    if (!$this->sale_lib->add_item($item_id_str, $item_location, $quantity, $discount, $discount_type, PRICE_MODE_STANDARD, null, null, $service['price'])) {
+                        $data['error'] = lang('Sales.unable_to_add_item');
+                    }
+                }
+            } else {
+                $data['error'] = lang('Sales.unable_to_add_item');
+            }
         } elseif ($this->item_kit->is_valid_item_kit($item_id_or_number_or_item_kit_or_receipt)) {
             // Add kit item to order if one is assigned
             $pieces = explode(' ', $item_id_or_number_or_item_kit_or_receipt);
@@ -569,8 +676,8 @@ class Sales extends Secure_Controller
         ];
 
         if ($this->validate($rules)) {
-            $description = $this->request->getPost('description', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-            $serialnumber = $this->request->getPost('serialnumber', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $description = (string)$this->request->getPost('description', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $serialnumber = (string)$this->request->getPost('serialnumber', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             $price = parse_decimals($this->request->getPost('price'));
             $quantity = parse_decimals($this->request->getPost('quantity'));
             $discount_type = $this->request->getPost('discount_type', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -840,6 +947,20 @@ class Sales extends Secure_Controller
             }
 
             $data['sale_id_num'] = $this->sale->save_value($sale_id, $data['sale_status'], $data['cart'], $customer_id, $employee_id, $data['comments'], $invoice_number, $work_order_number, $quote_number, $sale_type, $data['payments'], $data['dinner_table'], $tax_details);
+
+            // Handle appointment integration: save sale_id back to appointment
+            $appointment_id = $this->session->get('appointment_id');
+            if ($appointment_id && $data['sale_id_num'] != -1) {
+                $appointmentModel = model(\App\Models\AppointmentModel::class);
+                $appointmentModel->update($appointment_id, [
+                    'sale_id' => $data['sale_id_num'],
+                    'status' => 'completed'
+                ]);
+                $this->session->remove('appointment_id');
+                $this->session->remove('appointment_service_id');
+                $this->session->remove('appointment_service_price');
+                $this->session->remove('appointment_service_name');
+            }
 
             $data['sale_id'] = 'POS ' . $data['sale_id_num'];
 

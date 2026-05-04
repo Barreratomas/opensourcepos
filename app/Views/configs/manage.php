@@ -38,6 +38,9 @@
     <li role="presentation">
         <a data-toggle="tab" href="#system_tab" title="<?= lang('Config.system_conf') ?>"><?= lang('Config.system_conf') ?></a>
     </li>
+    <li role="presentation">
+        <a data-toggle="tab" href="#integrations_tab" title="<?= lang('Config.integrations_configuration') ?>"><?= lang('Config.integrations') ?></a>
+    </li>
 </ul>
 
 <div class="tab-content">
@@ -73,6 +76,9 @@
     </div>
     <div class="tab-pane" id="system_tab">
         <?= view('configs/system_config') ?>
+    </div>
+    <div class="tab-pane" id="integrations_tab">
+        <?= view('configs/integrations_config') ?>
     </div>
 </div>
 

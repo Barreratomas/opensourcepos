@@ -1186,7 +1186,7 @@ class Sale_lib
      * @param string|null $discounted_total
      * @return bool
      */
-    public function edit_item(string $line, string $description, string $serialnumber, string $quantity, string $discount, ?string $discount_type, ?string $price, ?string $discounted_total = null): bool
+    public function edit_item(string $line, ?string $description, ?string $serialnumber, string $quantity, string $discount, ?string $discount_type, ?string $price, ?string $discounted_total = null): bool
     {
         $items = $this->get_cart();
         if (isset($items[$line])) {
@@ -1195,8 +1195,8 @@ class Sale_lib
                 // Note when entered the "discounted_total" is expected to be entered without a discount
                 $quantity = $this->get_quantity_sold($discounted_total, $price);
             }
-            $line['description'] = $description;
-            $line['serialnumber'] = $serialnumber;
+            $line['description'] = $description ?? '';
+            $line['serialnumber'] = $serialnumber ?? '';
             $line['quantity'] = $quantity;
             $line['discount'] = $discount;
 

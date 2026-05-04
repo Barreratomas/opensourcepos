@@ -104,6 +104,7 @@ class Module extends Model
         $builder->where('person_id', $person_id);
         $builder->whereIn('menu_group', $menus);
         $builder->where('sort !=', 0);
+        $builder->distinct();
         $builder->orderBy('sort', 'asc');
 
         return $builder->get();
@@ -122,6 +123,7 @@ class Module extends Model
         $builder->where('person_id', $person_id);
         $builder->whereIn('menu_group', $menus);
         $builder->where('sort !=', 0);
+        $builder->distinct();
         $builder->orderBy('sort', 'asc');
 
         return $builder->get();

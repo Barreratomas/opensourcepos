@@ -272,6 +272,24 @@ class Config extends Secure_Controller
 
         $data['mailchimp']['lists'] = $this->_mailchimp();
 
+        // Google Calendar related fields
+        $data['gcalendar'] = [];
+        if (check_encryption()) {
+            $data['gcalendar']['client_id'] = (isset($this->config['gcalendar_client_id']) && !empty($this->config['gcalendar_client_id']))
+                ? $this->encrypter->decrypt($this->config['gcalendar_client_id'])
+                : '';
+            $data['gcalendar']['client_secret'] = (isset($this->config['gcalendar_client_secret']) && !empty($this->config['gcalendar_client_secret']))
+                ? $this->encrypter->decrypt($this->config['gcalendar_client_secret'])
+                : '';
+            $data['gcalendar']['token'] = (isset($this->config['gcalendar_token']) && !empty($this->config['gcalendar_token']))
+                ? $this->encrypter->decrypt($this->config['gcalendar_token'])
+                : '';
+        } else {
+            $data['gcalendar']['client_id'] = '';
+            $data['gcalendar']['client_secret'] = '';
+            $data['gcalendar']['token'] = '';
+        }
+
         echo view('configs/manage', $data);
     }
 
@@ -605,6 +623,40 @@ class Config extends Secure_Controller
         }
 
         $batch_save_data = ['mailchimp_api_key' => $api_key, 'mailchimp_list_id' => $list_id];
+
+        $success = $this->appconfig->batch_save($batch_save_data);
+
+        echo json_encode(['success' => $success, 'message' => lang('Config.saved_' . ($success ? '' : 'un') . 'successfully')]);
+    }
+
+    /**
+     * Saves Google Calendar configuration. Used in app/Views/configs/integrations_config.php
+     *
+     * @throws ReflectionException
+     * @return void
+     * @noinspection PhpUnused
+     */
+    public function postSaveGoogleCalendar(): void
+    {
+        $client_id = '';
+        $client_secret = '';
+
+        if (check_encryption()) {
+            $client_id_unencrypted = $this->request->getPost('gcalendar_client_id');
+            if (!empty($client_id_unencrypted)) {
+                $client_id = $this->encrypter->encrypt($client_id_unencrypted);
+            }
+
+            $client_secret_unencrypted = $this->request->getPost('gcalendar_client_secret');
+            if (!empty($client_secret_unencrypted)) {
+                $client_secret = $this->encrypter->encrypt($client_secret_unencrypted);
+            }
+        }
+
+        $batch_save_data = [
+            'gcalendar_client_id' => $client_id,
+            'gcalendar_client_secret' => $client_secret
+        ];
 
         $success = $this->appconfig->batch_save($batch_save_data);
 

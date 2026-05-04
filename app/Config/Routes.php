@@ -39,3 +39,25 @@ $routes->add('reports/specific_customers', 'Reports::specific_customer_input');
 $routes->add('reports/specific_employees', 'Reports::specific_employee_input');
 $routes->add('reports/specific_discounts', 'Reports::specific_discount_input');
 $routes->add('reports/specific_suppliers', 'Reports::specific_supplier_input');
+
+// Appointments module routes
+$routes->get('appointments', 'Appointments::index');
+$routes->get('appointments/events', 'Appointments::get_events');
+$routes->post('appointments/create', 'Appointments::create');
+$routes->post('appointments/update/(:num)', 'Appointments::update/$1');
+$routes->post('appointments/delete/(:num)', 'Appointments::delete/$1');
+$routes->post('appointments/complete/(:num)', 'Appointments::complete/$1');
+$routes->get('appointments/form/(:num)', 'Appointments::get_form/$1');
+$routes->get('appointments/form', 'Appointments::get_form');
+$routes->get('appointments/customer_appointments/(:num)', 'Appointments::getCustomer_appointments/$1');
+$routes->get('appointments/google_authorize', 'Appointments::google_authorize');
+$routes->get('appointments/google_callback', 'Appointments::google_callback');
+
+// Appointment services routes
+$routes->get('appointment_services', 'Appointment_services::index');
+$routes->get('appointment_services/list', 'Appointment_services::list');
+$routes->post('appointment_services/create', 'Appointment_services::create');
+$routes->post('appointment_services/update/(:num)', 'Appointment_services::update/$1');
+$routes->post('appointment_services/delete/(:num)', 'Appointment_services::delete/$1');
+$routes->get('appointment_services/form/(:num)', 'Appointment_services::get_form/$1');
+$routes->get('appointment_services/form', 'Appointment_services::get_form');

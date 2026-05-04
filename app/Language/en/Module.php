@@ -46,4 +46,14 @@ return [
     "timeclocks_categories"      => "",
     "timeclocks_categories_desc" => "",
     "timeclocks_desc"            => "",
+    // Appointments module
+    "appointments"               => "Agenda",
+    "appointments_desc"          => "Schedule and manage appointments.",
+    "appointment_services"       => "Services",
+    "appointment_services_desc"  => "Manage appointment services.",
+    // Backwards-compatible keys used by migrations
+    "module_appointments"        => "Agenda",
+    "module_appointments_desc"   => "Schedule and manage appointments.",
+    "module_appointment_services"=> "Services",
+    "module_appointment_services_desc" => "Manage appointment services.",
 ];
