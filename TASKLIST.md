@@ -43,8 +43,8 @@ en Google Calendar en tiempo real
   - [x] `get_form($id = null)` — HTML del modal vía AJAX
  - [x] Crear `app/Controllers/Appointment_services.php`
   - [x] CRUD completo de servicios
- - [ ] Agregar permisos en `ospos_grants` para el nuevo módulo
- - [ ] Agregar rutas en `app/Config/Routes.php`
+ - [x] Agregar permisos en `ospos_grants` para el nuevo módulo
+ - [x] Agregar rutas en `app/Config/Routes.php`
  - [x] Agregar permisos en `ospos_grants` para el nuevo módulo
  - [x] Agregar rutas en `app/Config/Routes.php`
 

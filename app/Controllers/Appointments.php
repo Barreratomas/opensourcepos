@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\AppointmentModel;
 use App\Models\AppointmentServiceModel;
+use App\Models\AppointmentItemModel;
 use App\Libraries\Google_calendar_lib;
 use App\Models\Customer;
 
@@ -44,7 +45,16 @@ class Appointments extends Secure_Controller
 
         $events = [];
         foreach ($appts as $a) {
-            $title = isset($services[$a['service_id']]) ? $services[$a['service_id']]['name'] : 'Appointment';
+            $appointmentServices = $this->appointmentModel->getServices($a['id']);
+            $serviceNames = [];
+            foreach ($appointmentServices as $as) {
+                if (isset($services[$as['service_id']])) {
+                    $serviceNames[] = $services[$as['service_id']]['name'];
+                }
+            }
+            
+            $title = !empty($serviceNames) ? implode(', ', $serviceNames) : (isset($services[$a['service_id']]) ? $services[$a['service_id']]['name'] : 'Appointment');
+            
             $events[] = [
                 'id' => $a['id'],
                 'title' => $title,
@@ -78,10 +88,12 @@ class Appointments extends Secure_Controller
             return $this->response->setStatusCode(409)->setJSON(['error' => 'Employee has an overlapping appointment']);
         }
 
+        $serviceIds = is_array($data['service_id']) ? $data['service_id'] : [$data['service_id']];
+
         $insertId = $this->appointmentModel->insert([
             'customer_id' => $data['customer_id'],
             'employee_id' => $data['employee_id'],
-            'service_id' => $data['service_id'],
+            'service_id' => $serviceIds[0], // Keep first one in main table for compatibility
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
             'status' => $data['status'] ?? 'pending',
@@ -91,6 +103,13 @@ class Appointments extends Secure_Controller
         ]);
 
         if ($insertId) {
+            $itemModel = new AppointmentItemModel();
+            foreach ($serviceIds as $sid) {
+                $itemModel->insert([
+                    'appointment_id' => $insertId,
+                    'service_id' => $sid
+                ]);
+            }
             $this->sync_google_calendar($insertId);
         }
 
@@ -109,6 +128,20 @@ class Appointments extends Secure_Controller
         if (!empty($data['employee_id']) && !empty($data['start_time']) && !empty($data['end_time'])) {
             if ($this->appointmentModel->checkOverlap((int)$data['employee_id'], $data['start_time'], $data['end_time'], (int)$id)) {
                 return $this->response->setStatusCode(409)->setJSON(['error' => 'Employee has an overlapping appointment']);
+            }
+        }
+
+        if (isset($data['service_id'])) {
+            $serviceIds = is_array($data['service_id']) ? $data['service_id'] : [$data['service_id']];
+            $data['service_id'] = $serviceIds[0]; // Keep first one in main table
+
+            $itemModel = new AppointmentItemModel();
+            $itemModel->deleteByAppointment($id);
+            foreach ($serviceIds as $sid) {
+                $itemModel->insert([
+                    'appointment_id' => $id,
+                    'service_id' => $sid
+                ]);
             }
         }
 
@@ -157,6 +190,11 @@ class Appointments extends Secure_Controller
                 $customerModel = model(\App\Models\Customer::class);
                 $customer = $customerModel->get_info($appointment['customer_id']);
                 $appointment['customer_name'] = $customer->first_name . ' ' . $customer->last_name;
+                
+                // Get all services
+                $appointmentServices = $this->appointmentModel->getServices($id);
+                $appointment['services'] = array_column($appointmentServices, 'service_id');
+                
                 $result['appointment'] = $appointment;
             }
         }

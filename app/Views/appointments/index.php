@@ -106,9 +106,9 @@
           </div>
 
           <div class="form-group form-group-sm">
-            <label class="control-label col-xs-3">Servicio</label>
+            <label class="control-label col-xs-3">Servicios</label>
             <div class="col-xs-8">
-                <select id="service_id" name="service_id" class="form-control input-sm"></select>
+                <select id="service_id" name="service_id[]" class="form-control input-sm selectpicker" multiple data-live-search="true" title="-- Seleccione uno o más servicios --"></select>
                 <small id="service-info" class="text-muted"></small>
             </div>
           </div>
@@ -179,17 +179,26 @@ document.addEventListener('DOMContentLoaded', function() {
     fetch('appointment_services/list').then(r=>r.json()).then(list=>{ list.forEach(s=> servicesMap[s.id]=s); populateServices(list); });
 
     function updateEndTime() {
-        var serviceId = document.getElementById('service_id').value;
+        var selectedServices = $('#service_id').val() || [];
         var startTime = document.getElementById('start_time').value;
         var info = document.getElementById('service-info');
         
-        if (serviceId && servicesMap[serviceId]) {
-            var s = servicesMap[serviceId];
-            info.textContent = 'Precio: $' + s.price + ' | Duración: ' + s.duration_minutes + ' min';
+        if (selectedServices.length > 0) {
+            var totalDuration = 0;
+            var totalPrice = 0;
+            
+            selectedServices.forEach(id => {
+                if (servicesMap[id]) {
+                    totalDuration += parseInt(servicesMap[id].duration_minutes);
+                    totalPrice += parseFloat(servicesMap[id].price);
+                }
+            });
+
+            info.textContent = 'Precio Total: $' + totalPrice.toFixed(2) + ' | Duración Total: ' + totalDuration + ' min';
             
             if (startTime) {
                 var start = new Date(startTime);
-                var end = new Date(start.getTime() + s.duration_minutes * 60000);
+                var end = new Date(start.getTime() + totalDuration * 60000);
                 
                 // Adjust for timezone offset to local ISO string (YYYY-MM-DDTHH:mm)
                 var year = end.getFullYear();
@@ -206,17 +215,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    document.getElementById('service_id').addEventListener('change', updateEndTime);
+    $('#service_id').on('change', updateEndTime);
     document.getElementById('start_time').addEventListener('change', updateEndTime);
 
     function populateServices(list){
         var sel = document.getElementById('service_id'); sel.innerHTML='';
-        // Add empty option
-        var emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.textContent = '-- Seleccione un servicio --';
-        sel.appendChild(emptyOpt);
         list.forEach(s=>{ var o = document.createElement('option'); o.value=s.id; o.textContent = s.name + ' ('+s.duration_minutes+'m)'; sel.appendChild(o); });
+        $('.selectpicker').selectpicker('refresh');
     }
 
     function translateStatus(status) {
@@ -295,6 +300,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (opts && opts.end) document.getElementById('end_time').value = opts.end.substring(0,16);
         document.getElementById('delete-appt').style.display = opts && opts.id ? 'inline-block' : 'none';
         document.getElementById('complete-sale-appt').style.display = opts && opts.id ? 'inline-block' : 'none';
+        $('#service_id').val([]).selectpicker('refresh');
+        document.getElementById('service-info').textContent = '';
         $('#appointmentModal').modal('show');
     }
 
@@ -303,7 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('customer_id').value = a.customer_id;
         document.getElementById('customer_name').value = a.customer_name || '';
         document.getElementById('employee_id').value = a.employee_id;
-        document.getElementById('service_id').value = a.service_id;
+        
+        // Handle multiple services
+        var services = a.services || [a.service_id];
+        $('#service_id').val(services).selectpicker('refresh');
+        updateEndTime();
+
         document.getElementById('start_time').value = a.start_time.replace(' ', 'T').substring(0,16);
         document.getElementById('end_time').value = a.end_time.replace(' ', 'T').substring(0,16);
         document.getElementById('status').value = a.status;
@@ -315,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('complete-sale-appt').addEventListener('click', function(){
         var id = document.getElementById('appt-id').value;
         var customer_id = document.getElementById('customer_id').value;
-        var service_id = document.getElementById('service_id').value;
+        var services = $('#service_id').val() || [];
         
         if (!id || !customer_id) {
             alert('Error: Datos del turno incompletos');
@@ -323,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Redirect to sales with parameters
-        window.location.href = '<?= site_url('sales') ?>?appointment_id=' + id + '&customer_id=' + customer_id + '&service_id=' + service_id;
+        window.location.href = '<?= site_url('sales') ?>?appointment_id=' + id + '&customer_id=' + customer_id + '&service_ids=' + services.join(',');
     });
 
     document.getElementById('save-appt').addEventListener('click', function(){
@@ -331,14 +343,24 @@ document.addEventListener('DOMContentLoaded', function() {
         var body = new URLSearchParams();
         body.append('customer_id', document.getElementById('customer_id').value);
         body.append('employee_id', document.getElementById('employee_id').value);
-        body.append('service_id', document.getElementById('service_id').value);
+        
+        var services = $('#service_id').val() || [];
+        services.forEach(s => body.append('service_id[]', s));
+
         body.append('start_time', toSqlDatetime(document.getElementById('start_time').value));
         body.append('end_time', toSqlDatetime(document.getElementById('end_time').value));
         body.append('status', document.getElementById('status').value);
         body.append('notes', document.getElementById('notes').value);
 
         var url = id ? ('appointments/update/' + id) : 'appointments/create';
-        fetch(url, { method: 'POST', body: body }).then(r=>r.json()).then(resp=>{ $('#appointmentModal').modal('hide'); calendar.refetchEvents(); if (resp.error) alert('Error: '+resp.error); });
+        fetch(url, { method: 'POST', body: body }).then(r=>r.json()).then(resp=>{ 
+            if (resp.error) {
+                alert('Error: ' + resp.error);
+            } else {
+                $('#appointmentModal').modal('hide'); 
+                calendar.refetchEvents(); 
+            }
+        });
     });
 
     document.getElementById('delete-appt').addEventListener('click', function(){

@@ -62,6 +62,25 @@ CREATE TABLE `ospos_appointments` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `ospos_appointment_items`
+--
+
+DROP TABLE IF EXISTS `ospos_appointment_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ospos_appointment_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `appointment_id` int(11) NOT NULL,
+  `service_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `appointment_id` (`appointment_id`),
+  KEY `service_id` (`service_id`),
+  CONSTRAINT `ospos_appointment_items_appointment_id_foreign` FOREIGN KEY (`appointment_id`) REFERENCES `ospos_appointments` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `ospos_appointment_items_service_id_foreign` FOREIGN KEY (`service_id`) REFERENCES `ospos_appointment_services` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `ospos_attribute_definitions`
 --
 

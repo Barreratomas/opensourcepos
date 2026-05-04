@@ -75,6 +75,7 @@ class Sales extends Secure_Controller
         // Handle appointment integration
         $customer_id = $this->request->getGet('customer_id');
         $service_id = $this->request->getGet('service_id');
+        $service_ids = $this->request->getGet('service_ids');
         $appointment_id = $this->request->getGet('appointment_id');
 
         // Only process if appointment_id is present in the URL (first redirect from Agenda)
@@ -85,53 +86,59 @@ class Sales extends Secure_Controller
                 $this->sale_lib->set_customer($customer_id);
             }
 
-            if ($service_id) {
+            $ids_to_process = [];
+            if ($service_ids) {
+                $ids_to_process = explode(',', $service_ids);
+            } elseif ($service_id) {
+                $ids_to_process = [$service_id];
+            }
+
+            if (!empty($ids_to_process)) {
                 $serviceModel = model(\App\Models\AppointmentServiceModel::class);
-                $service = $serviceModel->find($service_id);
-                if ($service) {
-                    $this->session->set('appointment_service_id', $service_id);
-                    $this->session->set('appointment_service_price', $service['price']);
-                    $this->session->set('appointment_service_name', $service['name']);
+                $itemModel = model(\App\Models\Item::class);
+                $item_location = $this->sale_lib->get_sale_location();
 
-                    // Try to find an existing item with the same name or create a temporary one
-                    $itemModel = model(\App\Models\Item::class);
-                    $item = $itemModel->where('name', $service['name'])->where('deleted', 0)->first();
-                    
-                    $item_id = null;
-                    if ($item) {
-                        $item_id = $item['item_id'];
-                    } else {
-                        // Create a temporary item for this sale
-                        $item_data = [
-                            'name'        => $service['name'],
-                            'category'    => 'Servicios',
-                            'description' => 'Servicio desde Agenda',
-                            'unit_price'  => $service['price'],
-                            'cost_price'  => 0,
-                            'stock_type'  => HAS_NO_STOCK,
-                            'item_type'   => ITEM_TEMP,
-                            'deleted'     => 0
-                        ];
-                        $itemModel->save_value($item_data);
-                        $item_id = $item_data['item_id'];
-                    }
-
-                    if ($item_id) {
-                        $item_location = $this->sale_lib->get_sale_location();
-                        $discount = $this->config['default_sales_discount'];
-                        $discount_type = $this->config['default_sales_discount_type'];
+                foreach ($ids_to_process as $sid) {
+                    $service = $serviceModel->find($sid);
+                    if ($service) {
+                        // Try to find an existing item with the same name or create a temporary one
+                        $item = $itemModel->where('name', $service['name'])->where('deleted', 0)->first();
                         
-                        // Check customer discount
-                        if ($customer_id) {
-                            $customer_info = model(\App\Models\Customer::class)->get_info($customer_id);
-                            if ($customer_info->discount != '') {
-                                $discount = $customer_info->discount;
-                                $discount_type = $customer_info->discount_type;
-                            }
+                        $item_id = null;
+                        if ($item) {
+                            $item_id = $item['item_id'];
+                        } else {
+                            // Create a temporary item for this sale
+                            $item_data = [
+                                'name'        => $service['name'],
+                                'category'    => 'Servicios',
+                                'description' => 'Servicio desde Agenda',
+                                'unit_price'  => $service['price'],
+                                'cost_price'  => 0,
+                                'stock_type'  => HAS_NO_STOCK,
+                                'item_type'   => ITEM_TEMP,
+                                'deleted'     => 0
+                            ];
+                            $itemModel->save_value($item_data);
+                            $item_id = $item_data['item_id'];
                         }
 
-                        $item_id_str = (string)$item_id;
-                        $this->sale_lib->add_item($item_id_str, $item_location, 1, $discount, $discount_type, PRICE_MODE_STANDARD, null, null, $service['price']);
+                        if ($item_id) {
+                            $discount = $this->config['default_sales_discount'];
+                            $discount_type = $this->config['default_sales_discount_type'];
+                            
+                            // Check customer discount
+                            if ($customer_id) {
+                                $customer_info = model(\App\Models\Customer::class)->get_info($customer_id);
+                                if ($customer_info->discount != '') {
+                                    $discount = $customer_info->discount;
+                                    $discount_type = $customer_info->discount_type;
+                                }
+                            }
+
+                            $item_id_str = (string)$item_id;
+                            $this->sale_lib->add_item($item_id_str, $item_location, 1, $discount, $discount_type, PRICE_MODE_STANDARD, null, null, $service['price']);
+                        }
                     }
                 }
             }

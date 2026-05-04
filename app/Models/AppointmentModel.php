@@ -64,4 +64,13 @@ class AppointmentModel extends Model
 
         return $builder->countAllResults() > 0;
     }
+
+    /**
+     * Get services for a specific appointment
+     */
+    public function getServices(int $appointmentId)
+    {
+        $itemModel = new AppointmentItemModel();
+        return $itemModel->where('appointment_id', $appointmentId)->findAll();
+    }
 }
