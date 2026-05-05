@@ -24,7 +24,7 @@ class AddAppointmentsModulePermissions extends Migration
         // Add permissions if missing
         $permissions = [
             ['permission_id' => 'appointments', 'module_id' => 'appointments'],
-            ['permission_id' => 'appointment_services', 'module_id' => 'appointments']
+            ['permission_id' => 'appointment_services', 'module_id' => 'appointment_services']
         ];
 
         foreach ($permissions as $p) {
