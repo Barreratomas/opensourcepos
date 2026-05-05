@@ -6,7 +6,7 @@ services:
         image: jekkos/opensourcepos:sql-master
         command: /bin/sh -c 'exit 0'
     ospos:
-        image: jekkos/opensourcepos:master
+        image: ospos_prod
         restart: always
         depends_on:
             - mysql
