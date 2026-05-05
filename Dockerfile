@@ -32,6 +32,8 @@ ARG GROUPID
 # Instalar Composer y dependencias necesarias para el build
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 RUN apt-get update && apt-get install -y libzip-dev wget git unzip \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && docker-php-ext-install zip
 
 RUN echo "Adding user uid $USERID with gid $GROUPID"
