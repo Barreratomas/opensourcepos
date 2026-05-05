@@ -29,6 +29,11 @@ FROM ospos AS ospos_dev
 ARG USERID
 ARG GROUPID
 
+# Instalar Composer y dependencias necesarias para el build
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+RUN apt-get update && apt-get install -y libzip-dev wget git unzip \
+    && docker-php-ext-install zip
+
 RUN echo "Adding user uid $USERID with gid $GROUPID"
 RUN ( addgroup --gid $GROUPID ospos || true ) && ( adduser --uid $USERID --gid $GROUPID ospos )
 
