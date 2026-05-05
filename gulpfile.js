@@ -260,6 +260,8 @@ gulp.task('copy-fonts', function() {
 
 gulp.task('copy-menubar', function() {
     pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/star.svg"),rename("attributes.svg"),gulp.dest("public/images/menubar"));
+    pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/calendar.svg"),rename("appointments.svg"),gulp.dest("public/images/menubar"));
+    pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/tools.svg"),rename("appointment_services.svg"),gulp.dest("public/images/menubar"));
     pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/bookshelf.svg"),rename("cashups.svg"),gulp.dest("public/images/menubar"));
     pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/gear.svg"),rename("config.svg"),gulp.dest("public/images/menubar"));
     pipeline(gulp.src("./node_modules/elegant-circles/svg/full-color/contacts.svg"),rename("customers.svg"),gulp.dest("public/images/menubar"));
